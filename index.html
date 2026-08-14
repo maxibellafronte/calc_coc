@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de mejoras · Clash of Clans</title>
+<style>
+  :root{
+    --bg: #14171c;
+    --bg-elev: #1c2027;
+    --bg-elev-2: #242933;
+    --border: #2e3440;
+    --text: #eef1f5;
+    --text-dim: #9aa3b2;
+    --text-faint: #626b7a;
+    --accent: #f2b632;
+    --accent-dim: #7a5e1e;
+    --good: #4cc38a;
+    --danger: #e0616b;
+    --radius: 14px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    background: radial-gradient(circle at 20% -10%, #23293a 0%, var(--bg) 45%) fixed;
+    color: var(--text);
+    min-height: 100vh;
+    padding: 32px 16px 64px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .wrap{ width:100%; max-width: 480px; }
+
+  header{ text-align:center; margin-bottom: 22px; }
+  header .badge{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size: 12px; color: var(--text-dim);
+    background: var(--bg-elev); border:1px solid var(--border);
+    padding: 6px 12px; border-radius: 999px;
+    margin-bottom: 14px;
+  }
+  header .badge .dot{ width:6px; height:6px; border-radius:50%; background: var(--good); box-shadow: 0 0 6px var(--good); }
+  header h1{ font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  header p{ margin:0; color: var(--text-dim); font-size: 13px; }
+
+  .clock{
+    text-align:center;
+    font-variant-numeric: tabular-nums;
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-bottom: 24px;
+    color: var(--text);
+  }
+  .clock .date{
+    display:block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-faint);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .card{
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .field-label{
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 10px;
+    display:block;
+  }
+
+  .dhm-row{
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .dhm-field{ position: relative; }
+  .dhm-field input{
+    width:100%;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 600;
+    text-align:center;
+    padding: 12px 4px 6px;
+    -moz-appearance: textfield;
+    font-variant-numeric: tabular-nums;
+  }
+  .dhm-field input::-webkit-outer-spin-button,
+  .dhm-field input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .dhm-field input:focus{ outline:none; border-color: var(--accent); }
+  .dhm-field span{
+    position:absolute; top:6px; left:8px;
+    font-size: 9px; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    pointer-events:none;
+  }
+
+  .name-input{
+    width:100%;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 14px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+  }
+  .name-input:focus{ outline:none; border-color: var(--accent); }
+  .name-input::placeholder{ color: var(--text-faint); }
+
+  .toggle-row{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    background: var(--bg-elev-2);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .toggle-row .label{ font-size: 13px; font-weight: 600; }
+  .toggle-row .sub{ font-size: 11px; color: var(--text-faint); margin-top:1px; }
+  .switch{
+    position:relative; width:42px; height:24px; flex:none;
+  }
+  .switch input{ opacity:0; width:0; height:0; }
+  .switch .slider{
+    position:absolute; inset:0; background: var(--border);
+    border-radius: 999px; cursor:pointer; transition:.15s;
+  }
+  .switch .slider:before{
+    content:""; position:absolute; width:18px; height:18px;
+    left:3px; top:3px; background:#fff; border-radius:50%;
+    transition:.15s;
+  }
+  .switch input:checked + .slider{ background: var(--accent); }
+  .switch input:checked + .slider:before{ transform: translateX(18px); }
+
+  button.calc-btn{
+    width:100%;
+    background: var(--accent);
+    color: #1a1406;
+    border:none;
+    border-radius: 10px;
+    padding: 13px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor:pointer;
+    transition: transform .05s ease, filter .15s ease;
+  }
+  button.calc-btn:hover{ filter: brightness(1.06); }
+  button.calc-btn:active{ transform: scale(0.98); }
+
+  .hint{
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 10px;
+    text-align:center;
+  }
+
+  .section-title{
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 24px 0 10px 4px;
+  }
+
+  .empty{
+    text-align:center;
+    color: var(--text-faint);
+    font-size: 13px;
+    padding: 18px 10px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+  }
+
+  .result{
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow:hidden;
+  }
+  .result.done{ border-color: var(--good); }
+  .result .top-row{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    margin-bottom: 10px;
+  }
+  .result .name{ font-size: 14px; font-weight: 700; }
+  .result .name.untitled{ color: var(--text-dim); font-weight: 600; }
+  .result .close-btn{
+    background:none; border:none; color: var(--text-faint);
+    cursor:pointer; font-size: 16px; line-height:1; padding:2px 6px;
+    border-radius: 6px;
+  }
+  .result .close-btn:hover{ color: var(--danger); background: rgba(224,97,107,0.1); }
+
+  .result .finish-time{
+    font-size: 26px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+  .result .finish-date{
+    font-size: 11px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+  }
+
+  .countdown{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    background: rgba(242,182,50,0.1);
+    padding: 5px 10px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+  }
+  .countdown.done{ color: var(--good); background: rgba(76,195,138,0.12); }
+  .countdown .pulse{
+    width:6px; height:6px; border-radius:50%; background: currentColor;
+    animation: pulse 1.4s infinite ease-in-out;
+  }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
+
+  .meta-row{
+    display:flex; justify-content:space-between;
+    font-size: 11px;
+    color: var(--text-faint);
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+    margin-top: 2px;
+  }
+  .meta-row .boosted-tag{ color: var(--accent); font-weight:700; }
+
+  .alarm-toggle{
+    display:flex; align-items:center; justify-content:space-between;
+    gap: 10px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 8px 8px 8px 16px;
+    margin: 0 auto 18px;
+    max-width: 480px;
+    font-size: 12px;
+  }
+  .alarm-toggle .txt{ color: var(--text-dim); font-weight:600; }
+  .alarm-toggle .txt small{ display:block; color: var(--text-faint); font-weight:500; font-size:10px; margin-top:1px; }
+  .alarm-toggle .switch{ width:38px; height:22px; }
+  .alarm-toggle .switch .slider:before{ width:16px; height:16px; }
+  .alarm-toggle .switch input:checked + .slider:before{ transform: translateX(16px); }
+  .alarm-toggle.denied .txt{ color: var(--danger); }
+
+  .ringing-banner{
+    position: sticky; top: 12px; z-index: 20;
+    display:none;
+    align-items:center; justify-content:space-between; gap:10px;
+    background: var(--good);
+    color: #072316;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-weight:700;
+    font-size: 13px;
+    box-shadow: 0 6px 24px rgba(76,195,138,0.35);
+    animation: ring-glow 1s ease-in-out infinite;
+  }
+  .ringing-banner.show{ display:flex; }
+  .ringing-banner button{
+    background: rgba(7,35,22,0.15);
+    border: none; color:#072316; font-weight:800;
+    padding: 7px 12px; border-radius: 8px; cursor:pointer; font-size:12px;
+    flex: none;
+  }
+  @keyframes ring-glow{
+    0%,100%{ box-shadow: 0 6px 24px rgba(76,195,138,0.35); }
+    50%{ box-shadow: 0 6px 30px rgba(76,195,138,0.75); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="badge"><span class="dot"></span> Uso personal</div>
+    <h1>Calculadora de mejoras</h1>
+    <p>Cargá el tiempo restante y te digo a qué hora termina</p>
+  </header>
+
+  <div class="clock" id="clock">
+    --:--:--
+    <span class="date" id="clockDate">-- -- --</span>
+  </div>
+
+  <div class="alarm-toggle" id="alarmToggle">
+    <div class="txt">
+      🔔 Avisarme cuando termine
+      <small id="alarmSub">Sonido + vibración + notificación — dejá esta pestaña abierta</small>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="inpAlarm" checked>
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="ringing-banner" id="ringingBanner">
+    <span id="ringingText">⏰ ¡Mejora completada!</span>
+    <button id="stopRingBtn">Detener</button>
+  </div>
+
+  <div class="card">
+    <span class="field-label">Tiempo restante (días · horas · minutos)</span>
+    <div class="dhm-row">
+      <div class="dhm-field">
+        <span>Días</span>
+        <input type="number" id="inpD" min="0" value="0" inputmode="numeric">
+      </div>
+      <div class="dhm-field">
+        <span>Horas</span>
+        <input type="number" id="inpH" min="0" value="0" inputmode="numeric">
+      </div>
+      <div class="dhm-field">
+        <span>Min</span>
+        <input type="number" id="inpM" min="0" value="0" inputmode="numeric">
+      </div>
+    </div>
+
+    <input type="text" class="name-input" id="inpName" placeholder="Nombre (opcional) — ej. Muro nivel 12">
+
+    <div class="toggle-row">
+      <div>
+        <div class="label">Booster x10 aplicado</div>
+        <div class="sub">Divide el tiempo restante entre 10</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="inpBoost" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <button class="calc-btn" id="calcBtn">Calcular finalización</button>
+    <div class="hint">El cálculo toma como inicio el momento en que apretás el botón</div>
+  </div>
+
+  <div class="section-title" id="resultsTitle" style="display:none;">Mejoras en curso</div>
+  <div id="results"></div>
+
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2,'0');
+
+  function updateClock(){
+    const now = new Date();
+    $('clock').firstChild.textContent = pad(now.getHours())+':'+pad(now.getMinutes())+':'+pad(now.getSeconds())+' ';
+    const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    $('clockDate').textContent = `${dias[now.getDay()]} ${now.getDate()} ${meses[now.getMonth()]}`;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  let entries = [];
+  let seq = 0;
+
+  // ---------- Alarma (sonido + vibración + notificación) ----------
+  const inpAlarm = $('inpAlarm');
+  const alarmToggleBox = $('alarmToggle');
+  const alarmSub = $('alarmSub');
+  const ringingBanner = $('ringingBanner');
+  const ringingText = $('ringingText');
+  const originalTitle = document.title;
+
+  let audioCtx = null;
+  let ringing = false;
+  let ringInterval = null;
+  let titleFlashInterval = null;
+
+  function ensureAudioCtx(){
+    if (!audioCtx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  function beep(){
+    const ctx = ensureAudioCtx();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    [0, 0.22, 0.44].forEach(offset => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, t0 + offset);
+      gain.gain.exponentialRampToValueAtTime(0.22, t0 + offset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + offset + 0.18);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0 + offset);
+      osc.stop(t0 + offset + 0.2);
+    });
+  }
+
+  function updateAlarmSub(){
+    if (typeof Notification === 'undefined'){
+      alarmSub.textContent = 'Sonido + vibración — dejá esta pestaña abierta';
+      return;
+    }
+    if (Notification.permission === 'denied'){
+      alarmSub.textContent = 'Notificaciones bloqueadas por el navegador — igual sonará y vibrará';
+      alarmToggleBox.classList.add('denied');
+    } else if (Notification.permission === 'granted'){
+      alarmSub.textContent = 'Sonido + vibración + notificación — dejá esta pestaña abierta';
+    } else {
+      alarmSub.textContent = 'Tocá para habilitar notificaciones';
+    }
+  }
+  updateAlarmSub();
+
+  inpAlarm.addEventListener('change', () => {
+    if (inpAlarm.checked){
+      ensureAudioCtx();
+      if (typeof Notification !== 'undefined' && Notification.permission === 'default'){
+        Notification.requestPermission().then(updateAlarmSub);
+      }
+    }
+    updateAlarmSub();
+  });
+
+  function triggerAlarm(entryName){
+    if (!inpAlarm.checked) return;
+
+    ringingText.textContent = `⏰ ¡${entryName || 'Mejora'} completada!`;
+    ringingBanner.classList.add('show');
+    ringing = true;
+
+    beep();
+    if (!ringInterval) ringInterval = setInterval(beep, 900);
+
+    if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500, 200, 500]);
+
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted'){
+      try {
+        new Notification('⏰ Mejora completada', {
+          body: entryName ? `${entryName} ya terminó.` : 'Tu mejora ya terminó.',
+          tag: 'coc-upgrade-done'
+        });
+      } catch (e) { /* ignore */ }
+    }
+
+    if (!titleFlashInterval){
+      let flash = false;
+      titleFlashInterval = setInterval(() => {
+        document.title = flash ? originalTitle : '⏰ ¡Completado!';
+        flash = !flash;
+      }, 1000);
+    }
+  }
+
+  function stopAlarm(){
+    ringing = false;
+    ringingBanner.classList.remove('show');
+    if (ringInterval){ clearInterval(ringInterval); ringInterval = null; }
+    if (titleFlashInterval){ clearInterval(titleFlashInterval); titleFlashInterval = null; document.title = originalTitle; }
+  }
+
+  $('stopRingBtn').addEventListener('click', stopAlarm);
+
+  function fmtDur(totalSeconds){
+    totalSeconds = Math.max(0, Math.round(totalSeconds));
+    const d = Math.floor(totalSeconds / 86400);
+    const h = Math.floor((totalSeconds % 86400) / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    let parts = [];
+    if (d > 0) parts.push(d + 'd');
+    if (d > 0 || h > 0) parts.push(pad(h) + 'h');
+    parts.push(pad(m) + 'm');
+    if (d === 0) parts.push(pad(s) + 's');
+    return parts.join(' ');
+  }
+
+  function fmtClock(dt){
+    return pad(dt.getHours())+':'+pad(dt.getMinutes())+':'+pad(dt.getSeconds());
+  }
+  function fmtDate(dt){
+    const now = new Date();
+    const sameDay = dt.toDateString() === now.toDateString();
+    const tomorrow = new Date(now); tomorrow.setDate(now.getDate()+1);
+    const isTomorrow = dt.toDateString() === tomorrow.toDateString();
+    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    if (sameDay) return 'hoy';
+    if (isTomorrow) return 'mañana';
+    return `${dt.getDate()} ${meses[dt.getMonth()]}${dt.getFullYear() !== now.getFullYear() ? ' '+dt.getFullYear() : ''}`;
+  }
+
+  function render(){
+    const wrap = $('results');
+    $('resultsTitle').style.display = entries.length ? 'block' : 'none';
+    if (!entries.length){
+      wrap.innerHTML = '';
+      return;
+    }
+    wrap.innerHTML = entries.map(e => `
+      <div class="result" data-id="${e.id}">
+        <div class="top-row">
+          <div class="name ${e.name ? '' : 'untitled'}">${e.name ? escapeHtml(e.name) : 'Mejora sin nombre'}</div>
+          <button class="close-btn" data-remove="${e.id}">✕</button>
+        </div>
+        <div class="finish-date">Termina</div>
+        <div class="finish-time">${fmtClock(e.finish)} <span style="font-size:14px; color:var(--text-faint); font-weight:600;">· ${fmtDate(e.finish)}</span></div>
+        <div class="countdown-slot"></div>
+        <div class="meta-row">
+          <span>Restante original: ${fmtDur(e.originalSeconds)}</span>
+          <span class="${e.boosted ? 'boosted-tag' : ''}">${e.boosted ? 'x10 aplicado' : 'sin booster'}</span>
+        </div>
+      </div>
+    `).join('');
+
+    wrap.querySelectorAll('[data-remove]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        entries = entries.filter(e => e.id !== btn.dataset.remove);
+        render();
+      });
+    });
+    tickCountdowns();
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function tickCountdowns(){
+    document.querySelectorAll('.result').forEach(card => {
+      const id = card.dataset.id;
+      const e = entries.find(x => x.id === id);
+      if (!e) return;
+      const remainingMs = e.finish - new Date();
+      const slot = card.querySelector('.countdown-slot');
+      if (remainingMs <= 0){
+        card.classList.add('done');
+        slot.innerHTML = `<span class="countdown done">✓ Completada</span>`;
+        if (!e.alerted){
+          e.alerted = true;
+          triggerAlarm(e.name);
+        }
+      } else {
+        card.classList.remove('done');
+        slot.innerHTML = `<span class="countdown"><span class="pulse"></span>${fmtDur(remainingMs/1000)} restantes</span>`;
+      }
+    });
+  }
+  setInterval(tickCountdowns, 1000);
+
+  $('calcBtn').addEventListener('click', () => {
+    const d = parseInt($('inpD').value, 10) || 0;
+    const h = parseInt($('inpH').value, 10) || 0;
+    const m = parseInt($('inpM').value, 10) || 0;
+    const boosted = $('inpBoost').checked;
+    const name = $('inpName').value.trim();
+
+    const originalSeconds = (d*86400) + (h*3600) + (m*60);
+    if (originalSeconds <= 0) return;
+
+    const appliedSeconds = boosted ? originalSeconds / 10 : originalSeconds;
+    const now = new Date();
+    const finish = new Date(now.getTime() + appliedSeconds*1000);
+
+    entries.unshift({
+      id: 'e' + (seq++),
+      name,
+      originalSeconds,
+      boosted,
+      finish,
+      alerted: false
+    });
+
+    if (inpAlarm.checked){
+      ensureAudioCtx();
+      if (typeof Notification !== 'undefined' && Notification.permission === 'default'){
+        Notification.requestPermission().then(updateAlarmSub);
+      }
+    }
+
+    // reset inputs for the next one
+    $('inpD').value = 0;
+    $('inpH').value = 0;
+    $('inpM').value = 0;
+    $('inpName').value = '';
+
+    render();
+  });
+</script>
+</body>
+</html>
