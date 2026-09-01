@@ -16,6 +16,7 @@
     --accent: #f2b632;
     --accent-dim: #7a5e1e;
     --good: #4cc38a;
+    --warn: #f08a3a;
     --danger: #e0616b;
     --radius: 14px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -280,6 +281,62 @@
   }
   .meta-row .boosted-tag{ color: var(--accent); font-weight:700; }
 
+  .boost-warn{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--warn);
+    background: rgba(240,138,58,0.12);
+    border: 1px solid rgba(240,138,58,0.35);
+    border-radius: 8px;
+    padding: 7px 10px;
+    margin-bottom: 10px;
+    line-height: 1.3;
+  }
+  .boost-warn small{ display:block; font-weight:600; color: var(--text-faint); font-size: 10.5px; margin-top:1px; }
+
+  .modal-backdrop{
+    position: fixed; inset: 0; z-index: 50;
+    display:none;
+    align-items:center; justify-content:center;
+    padding: 20px;
+    background: rgba(8,10,14,0.72);
+    backdrop-filter: blur(2px);
+  }
+  .modal-backdrop.show{ display:flex; }
+  .modal{
+    width:100%; max-width: 360px;
+    background: var(--bg-elev);
+    border: 1px solid var(--warn);
+    border-radius: var(--radius);
+    padding: 22px 20px 18px;
+    text-align:center;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.5);
+  }
+  .modal .icon{ font-size: 34px; line-height:1; margin-bottom: 10px; }
+  .modal h2{ font-size: 17px; margin: 0 0 8px; color: var(--warn); }
+  .modal p{ font-size: 13px; color: var(--text-dim); margin: 0 0 6px; line-height: 1.45; }
+  .modal .detail{
+    font-size: 12px; color: var(--text-faint);
+    background: var(--bg-elev-2);
+    border-radius: 8px;
+    padding: 9px 10px;
+    margin: 12px 0 16px;
+    font-variant-numeric: tabular-nums;
+  }
+  .modal .detail b{ color: var(--text); }
+  .modal button{
+    width:100%;
+    background: var(--warn);
+    color: #1c0d02;
+    border:none; border-radius: 10px;
+    padding: 12px; font-size: 14px; font-weight: 700;
+    cursor:pointer;
+  }
+  .modal button:hover{ filter: brightness(1.06); }
+
   .alarm-toggle{
     display:flex; align-items:center; justify-content:space-between;
     gap: 10px;
@@ -393,6 +450,16 @@
 
 </div>
 
+<div class="modal-backdrop" id="boostModal">
+  <div class="modal" role="alertdialog" aria-labelledby="boostModalTitle">
+    <div class="icon">⚡</div>
+    <h2 id="boostModalTitle">Vas a necesitar más de un booster</h2>
+    <p>Cada booster dura 1 hora, y esta mejora tarda más que eso incluso con el booster aplicado.</p>
+    <div class="detail" id="boostModalDetail"></div>
+    <button id="boostModalOk">Entendido</button>
+  </div>
+</div>
+
 <script>
   const $ = id => document.getElementById(id);
   const pad = n => String(n).padStart(2,'0');
@@ -414,6 +481,12 @@
   let boostFactor = 10;
   const boostOptions = $('boostOptions');
   const boostSub = $('boostSub');
+
+  const BOOSTER_SECONDS = 3600; // cada booster dura 1 hora
+
+  function boostersNeeded(appliedSeconds){
+    return Math.ceil(appliedSeconds / BOOSTER_SECONDS);
+  }
 
   function updateBoostSub(){
     boostSub.textContent = boostFactor === 1
@@ -535,6 +608,21 @@
 
   $('stopRingBtn').addEventListener('click', stopAlarm);
 
+  // ---------- Aviso de boosters necesarios ----------
+  const boostModal = $('boostModal');
+
+  function showBoostModal(needed, appliedSeconds){
+    $('boostModalDetail').innerHTML =
+      `Con el booster la mejora tarda <b>${fmtDur(appliedSeconds)}</b><br>` +
+      `Necesitás <b>${needed} boosters</b> para cubrirla`;
+    boostModal.classList.add('show');
+  }
+  function hideBoostModal(){ boostModal.classList.remove('show'); }
+
+  $('boostModalOk').addEventListener('click', hideBoostModal);
+  boostModal.addEventListener('click', e => { if (e.target === boostModal) hideBoostModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') hideBoostModal(); });
+
   function fmtDur(totalSeconds){
     totalSeconds = Math.max(0, Math.round(totalSeconds));
     const d = Math.floor(totalSeconds / 86400);
@@ -579,6 +667,13 @@
         <div class="finish-date">Termina</div>
         <div class="finish-time">${fmtClock(e.finish)} <span style="font-size:14px; color:var(--text-faint); font-weight:600;">· ${fmtDate(e.finish)}</span></div>
         <div class="countdown-slot"></div>
+        ${e.boostersNeeded > 1 ? `
+        <div class="boost-warn">
+          <span>⚡</span>
+          <span>Vas a necesitar más de un booster
+            <small>${e.boostersNeeded} boosters en total (1 h cada uno)</small>
+          </span>
+        </div>` : ''}
         <div class="meta-row">
           <span>Restante original: ${fmtDur(e.originalSeconds)}</span>
           <span class="${e.boost > 1 ? 'boosted-tag' : ''}">${e.boost > 1 ? 'x' + e.boost + ' aplicado' : 'sin booster'}</span>
@@ -637,14 +732,19 @@
     const now = new Date();
     const finish = new Date(now.getTime() + appliedSeconds*1000);
 
+    const needed = boost > 1 ? boostersNeeded(appliedSeconds) : 0;
+
     entries.unshift({
       id: 'e' + (seq++),
       name,
       originalSeconds,
       boost,
+      boostersNeeded: needed,
       finish,
       alerted: false
     });
+
+    if (needed > 1) showBoostModal(needed, appliedSeconds);
 
     if (inpAlarm.checked){
       ensureAudioCtx();
