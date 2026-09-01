@@ -125,16 +125,6 @@
   .name-input:focus{ outline:none; border-color: var(--accent); }
   .name-input::placeholder{ color: var(--text-faint); }
 
-  .toggle-row{
-    display:flex; align-items:center; justify-content:space-between;
-    margin-bottom: 16px;
-    padding: 10px 12px;
-    background: var(--bg-elev-2);
-    border-radius: 10px;
-    border: 1px solid var(--border);
-  }
-  .toggle-row .label{ font-size: 13px; font-weight: 600; }
-  .toggle-row .sub{ font-size: 11px; color: var(--text-faint); margin-top:1px; }
   .switch{
     position:relative; width:42px; height:24px; flex:none;
   }
@@ -150,6 +140,38 @@
   }
   .switch input:checked + .slider{ background: var(--accent); }
   .switch input:checked + .slider:before{ transform: translateX(18px); }
+
+  .boost-box{
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  .boost-box .label{ font-size: 13px; font-weight: 600; }
+  .boost-box .sub{ font-size: 11px; color: var(--text-faint); margin: 1px 0 10px; }
+  .boost-options{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .boost-options button{
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-dim);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 10px 4px;
+    cursor: pointer;
+    transition: background .12s ease, color .12s ease, border-color .12s ease;
+  }
+  .boost-options button:hover{ border-color: var(--accent-dim); color: var(--text); }
+  .boost-options button.active{
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #1a1406;
+  }
 
   button.calc-btn{
     width:100%;
@@ -352,15 +374,14 @@
 
     <input type="text" class="name-input" id="inpName" placeholder="Nombre (opcional) — ej. Muro nivel 12">
 
-    <div class="toggle-row">
-      <div>
-        <div class="label">Booster x10 aplicado</div>
-        <div class="sub">Divide el tiempo restante entre 10</div>
+    <div class="boost-box">
+      <div class="label">Booster aplicado</div>
+      <div class="sub" id="boostSub">Divide el tiempo restante entre 10</div>
+      <div class="boost-options" id="boostOptions">
+        <button type="button" data-boost="1">Sin booster</button>
+        <button type="button" data-boost="10" class="active">x10</button>
+        <button type="button" data-boost="24">x24</button>
       </div>
-      <label class="switch">
-        <input type="checkbox" id="inpBoost" checked>
-        <span class="slider"></span>
-      </label>
     </div>
 
     <button class="calc-btn" id="calcBtn">Calcular finalización</button>
@@ -388,6 +409,26 @@
 
   let entries = [];
   let seq = 0;
+
+  // ---------- Selector de booster ----------
+  let boostFactor = 10;
+  const boostOptions = $('boostOptions');
+  const boostSub = $('boostSub');
+
+  function updateBoostSub(){
+    boostSub.textContent = boostFactor === 1
+      ? 'El tiempo restante se toma tal cual'
+      : `Divide el tiempo restante entre ${boostFactor}`;
+  }
+  updateBoostSub();
+
+  boostOptions.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      boostFactor = parseInt(btn.dataset.boost, 10);
+      boostOptions.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+      updateBoostSub();
+    });
+  });
 
   // ---------- Alarma (sonido + vibración + notificación) ----------
   const inpAlarm = $('inpAlarm');
@@ -540,7 +581,7 @@
         <div class="countdown-slot"></div>
         <div class="meta-row">
           <span>Restante original: ${fmtDur(e.originalSeconds)}</span>
-          <span class="${e.boosted ? 'boosted-tag' : ''}">${e.boosted ? 'x10 aplicado' : 'sin booster'}</span>
+          <span class="${e.boost > 1 ? 'boosted-tag' : ''}">${e.boost > 1 ? 'x' + e.boost + ' aplicado' : 'sin booster'}</span>
         </div>
       </div>
     `).join('');
@@ -586,13 +627,13 @@
     const d = parseInt($('inpD').value, 10) || 0;
     const h = parseInt($('inpH').value, 10) || 0;
     const m = parseInt($('inpM').value, 10) || 0;
-    const boosted = $('inpBoost').checked;
+    const boost = boostFactor;
     const name = $('inpName').value.trim();
 
     const originalSeconds = (d*86400) + (h*3600) + (m*60);
     if (originalSeconds <= 0) return;
 
-    const appliedSeconds = boosted ? originalSeconds / 10 : originalSeconds;
+    const appliedSeconds = originalSeconds / boost;
     const now = new Date();
     const finish = new Date(now.getTime() + appliedSeconds*1000);
 
@@ -600,7 +641,7 @@
       id: 'e' + (seq++),
       name,
       originalSeconds,
-      boosted,
+      boost,
       finish,
       alerted: false
     });
